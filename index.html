@@ -246,6 +246,34 @@ h1 {
 }
 
 .print-info-screen { display: none; }
+
+#hint-explain {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  border: 1px solid #38bdf8;
+  border-radius: 12px;
+  padding: 16px 24px;
+  max-width: min(90vw, 440px);
+  z-index: 50;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+  animation: slideUp 0.3s ease;
+}
+
+#hint-explain.show { display: block; }
+#hint-explain h4 { color: #38bdf8; margin-bottom: 8px; font-size: 1rem; }
+#hint-explain ul { list-style: none; padding: 0; }
+#hint-explain li { color: #cbd5e1; font-size: 0.85rem; margin-bottom: 4px; padding-left: 12px; position: relative; }
+#hint-explain li::before { content: '•'; color: #38bdf8; position: absolute; left: 0; }
+#hint-explain .close-hint { position: absolute; top: 8px; right: 12px; background: none; border: none; color: #64748b; font-size: 1.2rem; cursor: pointer; }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
 </style>
 </head>
 <body>
@@ -293,6 +321,7 @@ h1 {
   </div>
 </div>
 
+<div id="hint-explain"><button class="close-hint" onclick="closeHint()">✕</button><h4 id="hint-title"></h4><ul id="hint-reasons"></ul></div>
 <div id="ranking"></div>
 <div id="print-answer"></div>
 
@@ -535,12 +564,17 @@ function useHint() {
     ? selected
     : empty[Math.floor(Math.random() * empty.length)];
 
+  const answer = solution[r][c];
+  const reasons = explainHint(r, c, answer);
+
   hintsLeft--;
-  board[r][c] = solution[r][c];
+  board[r][c] = answer;
   given[r][c] = true;
   memos[r][c].clear();
-  removeMemoFromPeers(r, c, solution[r][c]);
+  removeMemoFromPeers(r, c, answer);
   selected = [r, c];
+
+  showHintExplain(r, c, answer, reasons);
 
   if (checkWin()) {
     gameOver = true;
@@ -548,6 +582,55 @@ function useHint() {
     showModal('축하합니다!', '퍼즐을 완성했습니다!');
   }
   updateUI();
+}
+
+function explainHint(r, c, answer) {
+  const reasons = [];
+  const rowNums = [], colNums = [], boxNums = [];
+
+  for (let i = 0; i < 9; i++) {
+    if (i !== c && board[r][i]) rowNums.push(board[r][i]);
+    if (i !== r && board[i][c]) colNums.push(board[i][c]);
+  }
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  for (let i = br; i < br+3; i++)
+    for (let j = bc; j < bc+3; j++)
+      if (!(i === r && j === c) && board[i][j]) boxNums.push(board[i][j]);
+
+  const rowExcluded = rowNums.sort((a,b) => a-b);
+  const colExcluded = colNums.sort((a,b) => a-b);
+  const boxExcluded = [...new Set(boxNums)].sort((a,b) => a-b);
+
+  if (rowExcluded.length > 0)
+    reasons.push(`${r+1}행에 이미 [${rowExcluded.join(', ')}]이 있어서 제외`);
+  if (colExcluded.length > 0)
+    reasons.push(`${c+1}열에 이미 [${colExcluded.join(', ')}]이 있어서 제외`);
+  if (boxExcluded.length > 0)
+    reasons.push(`${Math.floor(r/3)+1}-${Math.floor(c/3)+1}번 박스에 이미 [${boxExcluded.join(', ')}]이 있어서 제외`);
+
+  const all = new Set([...rowNums, ...colNums, ...boxNums]);
+  const possible = [];
+  for (let n = 1; n <= 9; n++) if (!all.has(n)) possible.push(n);
+
+  if (possible.length === 1) {
+    reasons.push(`가능한 숫자가 ${answer} 하나뿐이므로 정답은 ${answer}입니다`);
+  } else {
+    reasons.push(`가능한 후보: [${possible.join(', ')}] 중 정답은 ${answer}입니다`);
+  }
+
+  return reasons;
+}
+
+function showHintExplain(r, c, answer, reasons) {
+  document.getElementById('hint-title').textContent =
+    `[${r+1}행 ${c+1}열] → 정답: ${answer}`;
+  const ul = document.getElementById('hint-reasons');
+  ul.innerHTML = reasons.map(r => `<li>${r}</li>`).join('');
+  document.getElementById('hint-explain').classList.add('show');
+}
+
+function closeHint() {
+  document.getElementById('hint-explain').classList.remove('show');
 }
 
 function toggleMemo() {
