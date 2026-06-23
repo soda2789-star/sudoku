@@ -294,7 +294,7 @@ h1 {
 
 <div class="info-bar">
   <span>시간: <span class="value" id="timer">00:00</span></span>
-  <span>실수: <span class="value" id="mistakes">0</span>/3</span>
+  <span>실수: <span class="value" id="mistakes">0</span>/10</span>
   <span>점수: <span class="value" id="score">0</span></span>
   <span>힌트: <span class="value" id="hints-left">3</span></span>
 </div>
@@ -499,9 +499,9 @@ function placeNumber(n) {
 
     if (n !== solution[r][c]) {
       mistakes++;
-      if (mistakes >= 3) {
+      if (mistakes >= 10) {
         gameOver = true;
-        showModal('게임 오버', '실수 3회로 게임이 종료되었습니다.');
+        showModal('게임 오버', '실수 10회로 게임이 종료되었습니다.');
       }
     } else {
       score += memoMode ? 0 : 10;
